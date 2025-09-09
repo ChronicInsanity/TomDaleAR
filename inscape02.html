@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscape</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .video-container {
+            width: 80%;
+            max-width: 800px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .video-wrapper {
+            padding: 56.25% 0 0 0;
+            position: relative;
+        }
+        
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .click-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.3s ease, opacity 0.3s ease;
+        }
+
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #333;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        
+        .video-container:hover .click-overlay {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .video-container:hover .play-button {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .play-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1) !important;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+        
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head> 
+<body>
+    <div class="video-container">
+        <div class="video-wrapper">
+            <iframe 
+                id="vimeo-player"
+                src="https://player.vimeo.com/video/1020499629?h=58ef36756d&badge=0&autopause=0&player_id=0&app_id=58479" 
+                frameborder="0" 
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                referrerpolicy="strict-origin-when-cross-origin" 
+                title="6 Inscape London Night Poem 00_3_57_00">
+            </iframe>
+        </div>
+        <div class="click-overlay" id="clickOverlay">
+            <div class="play-button">▶</div>
+        </div>
+    </div>
+    
+    <div class="instructions" id="instructions">
+        Tap anywhere to enter fullscreen and play
+    </div>
+
+    <script src="https://player.vimeo.com/api/player.js"></script>
+    <script>
+        let player;
+        let hasStarted = false;
+
+        function initPlayer() {
+            const iframe = document.getElementById('vimeo-player');
+            player = new Vimeo.Player(iframe);
+            // Player is ready, setup listeners
+            setupEndListener();
+        }
+
+        const vimeoScript = document.querySelector('script[src*="vimeo.com"]');
+        if (window.Vimeo) {
+            initPlayer();
+        } else {
+            vimeoScript.addEventListener('load', initPlayer);
+        }
+
+        // --- SAFARI-COMPATIBLE CLICK HANDLER ---
+        document.body.addEventListener('click', function() {
+            if (!hasStarted && player) {
+                hasStarted = true;
+                
+                document.getElementById('clickOverlay').classList.add('hidden');
+                document.getElementById('instructions').classList.add('hidden');
+                
+                // ** SAFARI FIX **
+                // 1. Mute the player to guarantee play() is allowed by the browser.
+                player.setMuted(true);
+
+                // 2. Call play(). This returns a promise.
+                const playPromise = player.play();
+
+                // 3. Immediately unmute. Since this is in the same synchronous event handler
+                // as the user's tap, Safari allows it.
+                player.setMuted(false);
+                player.setVolume(1);
+
+                // 4. Once playback has successfully started, request fullscreen.
+                playPromise.then(() => {
+                    return player.requestFullscreen();
+                }).catch(error => {
+                    console.error('An error occurred during play or fullscreen request:', error);
+                    // On some very restrictive devices, fullscreen might still fail,
+                    // but the video should at least be playing with sound.
+                });
+            }
+        });
+
+        function setupEndListener() {
+            if (player) {
+                player.on('ended', function() {
+                    player.getFullscreen().then(function(fullscreen) {
+                        if (fullscreen) {
+                            player.exitFullscreen();
+                        }
+                    });
+                });
+            }
+        }
+
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
